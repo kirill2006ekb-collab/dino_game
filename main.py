@@ -64,10 +64,10 @@ class Game:
     
     def _spawn_obstacle(self):
 
-        score = self.model.score
+        model = self.model
         
         # Фабрика выбирает тип препятствия
-        obstacle_type = ObstacleFactory.get_random_type(score)
+        obstacle_type = ObstacleFactory.get_random_type(model)
         
         # Берём объект из соответствующего пула
         obstacle = None
@@ -86,6 +86,10 @@ class Game:
             obstacle = self.bird_pool.acquire()
             if obstacle:
                 print(f"[Game] Спавн птицы #{obstacle.id}, в пуле осталось: {len(self.bird_pool._pool)}")
+
+        elif obstacle_type == None:
+            print("[Game] Пропуск спавна (шанс не сработал)")
+            return
         
         # Если объект успешно получен — настраиваем и добавляем
         if obstacle:

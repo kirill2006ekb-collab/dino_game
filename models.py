@@ -1,5 +1,5 @@
 from config import GROUND_Y, GRAVITY, JUMP_STRENGTH, dino_height, dino_width, bird_height, bird_width, big_cactus_height, big_cactus_width, small_cactus_height, small_cactus_width, min_speed, max_speed, max_score
-from patterns import StateMachine, DinoState
+from patterns import StateMachine, DinoState, PRD
 import random
 
 
@@ -193,6 +193,9 @@ class Bird:
 class GameModel:
     
     def __init__(self):
+        self.bird_prd = PRD(25, "bird")
+        self.big_cactus_prd = PRD(30, "big_cactus")
+        self.nothing_prd = PRD(5, "nothing")
         self.dino = DinoModel()
         self.obstacles = []
         self.score = 0
@@ -202,6 +205,9 @@ class GameModel:
         print("[GameModel] Инициализирована")
     
     def reset(self):
+        self.bird_prd.reset()
+        self.big_cactus_prd.reset()
+        self.nothing_prd.reset()
         self.dino.reset()
         self.obstacles.clear()
         self.score = 0

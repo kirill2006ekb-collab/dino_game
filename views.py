@@ -141,7 +141,6 @@ class GameView:
         pygame.display.flip()
 
 
-# Новая функция масочной коллизии (заменяет старую pixel_collision)
 def mask_collision(sprite1, sprite2, rect1, rect2, resources):
     """
     Проверяет пересечение непрозрачных пикселей двух спрайтов через маски.
