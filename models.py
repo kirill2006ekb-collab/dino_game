@@ -152,10 +152,10 @@ class Cactus:
 
 class Bird:
     
-    def __init__(self, x=800):
+    def __init__(self, x=800, vx=0):
         self.id = 0
         self.x = x
-        self.y = GROUND_Y - bird_height - random.randint(0, 60)
+        self.y = GROUND_Y - bird_height - random.randint(0, 120)
         self.width = bird_width
         self.height = bird_height
         self.speed = min_speed
@@ -163,17 +163,37 @@ class Bird:
         self.has_given_score = False
         self.current_frame = 0
         self.animation_timer = 0
+        self.vy = 0
+        self.direction_timer=0
+        self.vx = vx
     
     def reset(self):
         self.x = 800
         self.speed = min_speed
         self.is_active = True
         self.has_given_score = False
-        self.y = GROUND_Y - bird_height - random.randint(0, 60)
+        self.y = GROUND_Y - bird_height - random.randint(0, 120)
         self.current_frame = 0
         self.animation_timer = 0
+        self.vy = 0
+        self.direction_timer=0
+        self.vx = 0
     
     def update(self):
+        self.direction_timer-=1
+        if self.direction_timer<=0:
+            self.vy=random.randint(-50, 50)/100
+            self.direction_timer=random.randint(30, 90)#количество кадров от 2 до 3 секунд
+        self.y += self.vy
+        min_y = GROUND_Y - bird_height - 250  # не выше 80 пикселей над землёй
+        max_y = GROUND_Y - bird_height - 5   # не ниже 5 пикселей над землёй
+        if self.y < min_y:
+            self.y = min_y
+            self.vy = abs(self.vy)  # начинаем двигаться вниз
+        elif self.y > max_y:
+            self.y = max_y
+            self.vy = -abs(self.vy)  # начинаем двигаться вверх
+
         self.x -= self.speed
         self.animation_timer += 1
         if self.animation_timer >= 30:
@@ -223,6 +243,8 @@ class GameModel:
         self.game_speed = min_speed + progress * (max_speed - min_speed)
         for obstacle in self.obstacles:
             obstacle.speed = self.game_speed
+            if type(obstacle)==Bird:
+                obstacle.speed+=obstacle.vx
         print(f"[GameModel] Счёт={self.score}, скорость={self.game_speed:.2f}")
     
     def add_obstacle(self, obstacle):

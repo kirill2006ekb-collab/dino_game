@@ -94,6 +94,8 @@ class Game:
         # Если объект успешно получен — настраиваем и добавляем
         if obstacle:
             obstacle.speed = self.model.game_speed
+            if type(obstacle)==Bird:
+                obstacle.vx=random.randint(25,75)/100
             obstacle.x = SCREEN_WIDTH  # Появляется с правого края
             obstacle.is_active = True
             self.model.add_obstacle(obstacle)
