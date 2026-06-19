@@ -193,7 +193,7 @@ class Bird:
 class GameModel:
     
     def __init__(self):
-        self.bird_prd = PRD(20, "bird")
+        self.bird_prd = PRD(25, "bird")
         self.big_cactus_prd = PRD(30, "big_cactus")
         self.nothing_prd = PRD(5, "nothing")
         self.dino = DinoModel()
@@ -205,6 +205,9 @@ class GameModel:
         print("[GameModel] Инициализирована")
     
     def reset(self):
+        self.bird_prd.reset()
+        self.big_cactus_prd.reset()
+        self.nothing_prd.reset()
         self.dino.reset()
         self.obstacles.clear()
         self.score = 0
