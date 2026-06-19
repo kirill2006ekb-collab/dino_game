@@ -1,5 +1,6 @@
 from enum import Enum
 import random
+from config import C_percents
 
 class DinoState(Enum):
     RUNNING = 1
@@ -100,11 +101,32 @@ class ObstacleFactory:
         return Bird(x, y)
     
     @staticmethod
-    def get_random_type(score):
-        import random
-        if score < 50:
-            return 'small_cactus'
-        elif score < 100:
-            return random.choice(['small_cactus', 'big_cactus'])
-        else:
-            return random.choice(['small_cactus', 'big_cactus', 'bird'])
+    def get_random_type(model):
+        if model.nothing_prd.check():
+            return None
+        elif model.bird_prd.check():
+            return 'bird'
+        elif model.big_cactus_prd.check():
+            return 'big_cactus'
+        return 'small_cactus'
+
+
+class PRD:
+
+    def __init__(self,base_chance, name):
+        self.base_chance = base_chance
+        self.counter=0
+        self.name = name
+        self.C = C_percents[base_chance]
+
+    def check(self):
+        self.counter+=1
+        current_chance = self.counter * self.C
+        if random.random() < current_chance:
+            self.reset()
+            return True
+        return False
+    
+    def reset(self):
+        self.counter = 0
+

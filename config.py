@@ -48,3 +48,9 @@ MAX_SPAWN_DELAY = 150
 min_speed = 5.0
 max_speed = 15.0
 max_score = 5000.0
+
+
+C_percents = {30:0.1189,
+              40:0.2096,
+              25:0.0844,
+              5:0.0038}
