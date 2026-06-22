@@ -1,6 +1,7 @@
 from enum import Enum
 import random
 from config import C_percents
+import math
 
 class DinoState(Enum):
     RUNNING = 1
@@ -104,11 +105,19 @@ class ObstacleFactory:
         elif model.big_cactus_prd.check():
             return 'big_cactus'
         return 'small_cactus'
+    
+
+def random_prd(items):
+    for item in items:
+        if item.prd.check():
+            return item
+    return None
+
 
 #PRD (ПОЧТИ ЧЕСТНЫЙ РАНДОМ)
 class PRD:
 
-    def __init__(self,base_chance, name):
+    def __init__(self,base_chance, name=None):
         self.base_chance = base_chance
         self.counter=0
         self.name = name
@@ -124,4 +133,3 @@ class PRD:
     
     def reset(self):
         self.counter = 0
-

@@ -1,11 +1,13 @@
 from config import *
 from patterns import StateMachine, DinoState, PRD
 import random
+from abc import ABC, abstractmethod
 
 
 class DinoModel:
     
-    def __init__(self):
+    def __init__(self,event_bus):
+        self.event_bus = event_bus
         self.reset()
     
     def reset(self):
@@ -23,7 +25,7 @@ class DinoModel:
     def _setup_state_machine(self):
         
         def is_on_ground():
-            return self.y + self.height >= GROUND_Y
+            return self.y + self.height >= GROUND_Y      
         
         def is_duck_key_released():
             return not self.is_ducking_key_held
@@ -75,6 +77,7 @@ class DinoModel:
                 self.y = GROUND_Y - self.height
                 self.vel_y = 0
                 self.state_machine.state = DinoState.RUNNING
+                self.event_bus.emit(DINO_LAND)
         
         # Обновляем конечный автомат
         self.state_machine.update()
@@ -105,25 +108,48 @@ class DinoModel:
         return f"Dino(state={self.state_machine.state.name}, y={self.y}, vy={self.vel_y}, duck_key={self.is_ducking_key_held})"
 
 
-class Cactus:
+class Obstacle(ABC):
     
-    def __init__(self, x=800, y=GROUND_Y-small_cactus_height, cactus_type=1):
+    def __init__(self, x: int, y: int, width: int, height: int):
         self.id = 0
         self.x = x
         self.y = y
-        self.cactus_type = cactus_type
-        self.speed = min_speed
+        self.width = width
+        self.height = height
+        self.speed = 0.0
         self.is_active = True
         self.has_given_score = False
+
+    def get_rect(self):
+        return (self.x, self.y, self.width, self.height)
+
+    def is_offscreen(self):
+        return self.x + self.width <= 0
+    
+    @abstractmethod
+    def update(self):
+        pass
+
+    @abstractmethod
+    def reset(self):
+        pass
+
+
+class Cactus(Obstacle):
+    
+    def __init__(self, x=800, y=GROUND_Y-small_cactus_height, cactus_type=1):
         self.cactus_picture = None
-        
+        self.cactus_type = cactus_type
+
         if cactus_type == 1:  # Маленький
-            self.width = small_cactus_width
-            self.height = small_cactus_height
+            width = small_cactus_width
+            height = small_cactus_height
         else:  # Большой
-            self.width = big_cactus_width
-            self.height = big_cactus_height
-            self.y = GROUND_Y - self.height
+            width = big_cactus_width
+            height = big_cactus_height
+            y = GROUND_Y - height
+
+        super().__init__(x, y, width, height)
     
     def reset(self):
         self.x = 800
@@ -133,28 +159,13 @@ class Cactus:
     
     def update(self):
         self.x -= self.speed
-    
-    def get_rect(self):
-        return (self.x, self.y, self.width, self.height)
-    
-    def is_offscreen(self):
-        return self.x + self.width <= 0
-    
-    def __repr__(self):
-        return f"Cactus(id={self.id}, x={self.x}, type={self.cactus_type}, height={self.height})"
 
 
-class Bird:
+class Bird(Obstacle):
     
     def __init__(self, x=800):
-        self.id = 0
-        self.x = x
-        self.y = GROUND_Y - bird_height - random.randint(0, BIRD_MAX_Y)
-        self.width = bird_width
-        self.height = bird_height
-        self.speed = min_speed
-        self.is_active = True
-        self.has_given_score = False
+        super().__init__(x, GROUND_Y - bird_height - random.randint(0, BIRD_MAX_Y),
+                         bird_width, bird_height)
         self.current_frame = 0
         self.animation_timer = 0
         self.vy = 0
@@ -192,23 +203,12 @@ class Bird:
             self.animation_timer = 0
             self.current_frame = 1 - self.current_frame
     
-    def get_rect(self):
-        return (self.x, self.y, self.width, self.height)
-    
-    def is_offscreen(self):
-        return self.x + self.width <= 0
-    
 
-class FlockBird:
+class FlockBird(Obstacle):
     
     def __init__(self, x=800, flock=None):
-        self.id = 0
-        self.x = x
-        self.reset_y()
-        self.width = flockbird_width
-        self.height = flockbird_height
-        self.speed = min_speed
-        self.is_active = True
+        y = GROUND_Y - bird_height - random.randint(FLOCKBIRD_MAX_Y, FLOCKBIRD_MIN_Y)
+        super().__init__(x, y, flockbird_width, flockbird_height)
         self.current_frame = 0
         self.animation_timer = 0
 
@@ -314,12 +314,6 @@ class FlockBird:
     def reset_y(self):
         self.y = GROUND_Y - bird_height - random.randint(FLOCKBIRD_MAX_Y, FLOCKBIRD_MIN_Y)
 
-    def get_rect(self):
-        return (self.x, self.y, self.width, self.height)
-    
-    def is_offscreen(self):
-        return self.x + self.width <= 0
-
 
 class Flock:
     """Стая птиц — визуальный эффект"""
@@ -344,8 +338,6 @@ class Flock:
 
         for bird in self.all_birds:
             bird.flock = [i for i in self.all_birds if i != bird]
-
-        
     
     def get_all_birds(self):
         return self.all_birds
@@ -359,12 +351,13 @@ class Flock:
 
 class GameModel:
     
-    def __init__(self):
+    def __init__(self,event_bus):
+        self.event_bus = event_bus
         self.bird_prd = PRD(30, "bird")
         self.flock_prd = PRD(15, "flock")
         self.big_cactus_prd = PRD(35, "big_cactus")
         self.nothing_prd = PRD(5, "nothing")
-        self.dino = DinoModel()
+        self.dino = DinoModel(self.event_bus)
         self.obstacles = []
         self.flocks = []
         self.score = 0

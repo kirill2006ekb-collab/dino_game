@@ -6,7 +6,54 @@ from events import EventBus
 from models import *
 from views import GameView
 from controllers import InputController, GameController
-from patterns import ObjectPool, ObstacleFactory
+from patterns import *
+
+
+class Step():
+    def __init__(self,sound,chance):
+        self.sound = sound
+        self.sound.set_volume(step_volume)
+        self.prd = PRD(chance)
+
+
+class SoundManager:
+    def __init__(self):
+        pygame.mixer.init()
+        self.sounds = {}
+        self.sounds['jump'] = pygame.mixer.Sound(SOUND_JUMP)
+        self.sounds['lose'] = pygame.mixer.Sound(SOUND_LOSE)
+        self.sounds['landing'] = pygame.mixer.Sound(SOUND_LAND)
+        self.sounds['flock'] = pygame.mixer.Sound(SOUND_FLOCK)
+        pygame.mixer.music.load(SOUND_MUSIC)
+        pygame.mixer.music.set_volume(music_volume)
+        self.sounds['landing'].set_volume(landing_volume)
+        self.sounds['lose'].set_volume(lose_volume)
+        self.sounds['jump'].set_volume(jump_volume)
+        self.sounds['flock'].set_volume(flock_volume)
+        self.music_is_playing = False
+        self.steps = []
+        for i in steps:
+            self.steps.append(Step(pygame.mixer.Sound(i),20))
+
+    
+    def play_music(self):
+        if not self.music_is_playing:
+            pygame.mixer.music.play(-1)
+            self.music_is_playing = True
+
+    def stop_music(self):
+        if self.music_is_playing:
+            pygame.mixer.music.stop()
+            self.music_is_playing = False
+
+    def play(self, name):
+        if name in self.sounds:
+            self.sounds[name].play()
+
+    def step(self):
+        selected = random_prd(self.steps)
+        if selected:
+            selected.sound.play()
 
 
 class Game:
@@ -18,15 +65,17 @@ class Game:
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))#pygame.FULLSCREEN
         pygame.display.set_caption("Dino Game")
         self.clock = pygame.time.Clock()
-        
-        # Model — данные и логика
-        self.model = GameModel()
-        
-        # View — отрисовка
-        self.view = GameView(self.screen)
-        
+
+        self.sound_manager = SoundManager()
+
         # EventBus — Singleton, получаем экземпляр
         self.event_bus = EventBus()
+
+        # Model — данные и логика
+        self.model = GameModel(self.event_bus)
+        
+        # View — отрисовка
+        self.view = GameView(self.screen,self.event_bus)
         
         # Пул для маленьких кактусов
         self.small_cactus_pool = ObjectPool(
@@ -52,7 +101,8 @@ class Game:
             self.small_cactus_pool,
             self.big_cactus_pool,
             self.bird_pool,
-            self.flock_bird_pool
+            self.flock_bird_pool,
+            self.sound_manager
         )
         self.input_controller = InputController()
         
@@ -66,6 +116,7 @@ class Game:
         self.model.is_running = False
     
     def _spawn_flock(self):
+        self.sound_manager.play('flock')
         flock = Flock(self.flock_bird_pool, self.model.game_speed)
         if not flock.get_all_birds():
             return
@@ -138,7 +189,7 @@ class Game:
         return self.input_controller.handle_events()
     
     def run(self):
-        
+        self.sound_manager.play_music()
         while self.running:
             self.running = self.handle_events()
             

@@ -29,6 +29,8 @@ EVENT_DINO_DUCK_STOP = "dino_duck_stop"
 EVENT_GAME_RESET = "game_reset"
 EVENT_COLLISION = "collision"
 EVENT_OBSTACLE_PASSED = "obstacle_passed"
+DINO_LAND = "dino_landed"
+STEP = "step"
 
 #Размеры
 dino_width = 50
@@ -96,3 +98,16 @@ C_percents = {5:0.0038,
               70:0.5643,
               75:0.6710}
 
+#Sounds
+SOUND_MUSIC = 'sounds/music.wav'
+SOUND_FLOCK = "sounds/flock.wav"
+SOUND_LAND = 'sounds/landing.wav'
+SOUND_LOSE = 'sounds/lose.wav'
+SOUND_JUMP = 'sounds/jump.wav'
+music_volume = 0.4
+jump_volume = 0.3
+landing_volume = 0.3
+flock_volume = 0.8
+lose_volume = 0.5
+step_volume = 0.5
+steps = ['sounds/step1.wav','sounds/step2.wav','sounds/step3.wav','sounds/step4.wav','sounds/step5.wav']
