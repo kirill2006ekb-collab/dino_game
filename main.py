@@ -3,7 +3,7 @@ import sys
 import random
 from config import *
 from events import EventBus
-from models import GameModel, Cactus, Bird
+from models import *
 from views import GameView
 from controllers import InputController, GameController
 from patterns import ObjectPool, ObstacleFactory
@@ -28,16 +28,19 @@ class Game:
         # EventBus — Singleton, получаем экземпляр
         self.event_bus = EventBus()
         
-        # Пул для маленьких кактусов (10 штук)
+        # Пул для маленьких кактусов
         self.small_cactus_pool = ObjectPool(
             Cactus, 10,
             x=SCREEN_WIDTH, cactus_type=1
         )
         
-        # Пул для больших кактусов (7 штук)
+        # Пул для больших кактусов
         self.big_cactus_pool = ObjectPool(class_type=Cactus, size=7, x=SCREEN_WIDTH, cactus_type=2)
         
-        # Пул для птиц (7 штук)
+        # Пул для птиц в стае
+        self.flock_bird_pool = ObjectPool(FlockBird, 15, x=SCREEN_WIDTH)
+
+        # Пул для птиц
         self.bird_pool = ObjectPool(
             Bird, 7,
             x=SCREEN_WIDTH
@@ -48,7 +51,8 @@ class Game:
             self.model, 
             self.small_cactus_pool,
             self.big_cactus_pool,
-            self.bird_pool
+            self.bird_pool,
+            self.flock_bird_pool
         )
         self.input_controller = InputController()
         
@@ -60,12 +64,19 @@ class Game:
     
     def _on_collision(self, _):
         self.model.is_running = False
-        print("[Game] СТОЛКНОВЕНИЕ! Игра остановлена. Нажмите R для перезапуска")
     
-    def _spawn_obstacle(self):
+    def _spawn_flock(self):
+        flock = Flock(self.flock_bird_pool, self.model.game_speed)
+        if not flock.get_all_birds():
+            return
+        self.model.add_flock(flock)
 
+    def _spawn_obstacle(self):
         model = self.model
         
+        if model.flock_prd.check():
+            self._spawn_flock()
+
         # Фабрика выбирает тип препятствия
         obstacle_type = ObstacleFactory.get_random_type(model)
         
@@ -74,21 +85,14 @@ class Game:
         
         if obstacle_type == 'small_cactus':
             obstacle = self.small_cactus_pool.acquire()
-            if obstacle:
-                print(f"[Game] Спавн маленького кактуса #{obstacle.id}, в пуле осталось: {len(self.small_cactus_pool._pool)}")
-        
+
         elif obstacle_type == 'big_cactus':
             obstacle = self.big_cactus_pool.acquire()
-            if obstacle:
-                print(f"[Game] Спавн большого кактуса #{obstacle.id}, в пуле осталось: {len(self.big_cactus_pool._pool)}")
-        
+
         elif obstacle_type == 'bird':
             obstacle = self.bird_pool.acquire()
-            if obstacle:
-                print(f"[Game] Спавн птицы #{obstacle.id}, в пуле осталось: {len(self.bird_pool._pool)}")
-
+        
         elif obstacle_type == None:
-            print("[Game] Пропуск спавна (шанс не сработал)")
             return
         
         # Если объект успешно получен — настраиваем и добавляем
@@ -97,15 +101,23 @@ class Game:
             obstacle.x = SCREEN_WIDTH  # Появляется с правого края
             obstacle.is_active = True
             self.model.add_obstacle(obstacle)
-        else:
-            print(f"[Game] ВНИМАНИЕ: Не удалось создать препятствие типа {obstacle_type} — пул пуст!")
     
     def update(self):
         if not self.model.is_running or not self.model.dino.is_alive:
             return
         
+        self.model.update_ground_offset()
+
         # Обновляем логику через контроллер
         self.game_controller.update()
+
+        for flock in self.model.flocks[:]:
+            if flock.is_completely_offscreen():
+                for bird in flock.get_all_birds():
+                    if bird in self.model.obstacles:
+                        self.model.obstacles.remove(bird)
+                        self.flock_bird_pool.release(bird)
+                self.model.remove_flock(flock)
         
         # Спавним препятствия
         self.spawn_timer += 1
@@ -126,7 +138,6 @@ class Game:
         return self.input_controller.handle_events()
     
     def run(self):
-        print("\n[Game] Игровой цикл запущен")
         
         while self.running:
             self.running = self.handle_events()
@@ -141,8 +152,7 @@ class Game:
         self._cleanup()
     
     def _cleanup(self):
-        print("\n[Game] Завершение игры...")
-        
+        self.model.clear_flocks()
         # Возвращаем все активные препятствия в пулы
         for obstacle in self.model.obstacles[:]:
             if isinstance(obstacle, Cactus):
@@ -152,8 +162,9 @@ class Game:
                     self.big_cactus_pool.release(obstacle)
             elif isinstance(obstacle, Bird):
                 self.bird_pool.release(obstacle)
+            elif isinstance(obstacle, FlockBird):
+                self.flock_bird_pool.release(obstacle)
         
-        print("[Game] Все ресурсы освобождены")
         pygame.quit()
         sys.exit()
 

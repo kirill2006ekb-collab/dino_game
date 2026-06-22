@@ -8,7 +8,7 @@ class DinoState(Enum):
     DUCKING = 3
     DEAD = 4
 
-
+#КОНЕЧНЫЙ АВТОМАТ
 class StateMachine:
     
     def __init__(self, initial_state):
@@ -41,7 +41,7 @@ class StateMachine:
         
         return f"StateMachine(state={self.state.name},\n_transitions={{\n{transitions_block}\n}})"
 
-
+#ОБЪЕКТНЫЙ ПУЛ
 class ObjectPool:
     
     def __init__(self, class_type, size, **default_args):
@@ -54,8 +54,6 @@ class ObjectPool:
             obj = class_type(**default_args)
             obj.id = i
             self._pool.append(obj)
-        
-        print(f"[Pool] Создан пул для {class_type.__name__} размером {size}")
     
     def acquire(self, **override_args):
         if self._pool:
@@ -65,10 +63,8 @@ class ObjectPool:
                 if hasattr(obj, key):
                     setattr(obj, key, value)
             self._active.append(obj)
-            print(f"[Pool] {self.class_type.__name__} #{obj.id} ВЗЯТ, осталось: {len(self._pool)}")
             return obj
         else:
-            print(f"[Pool] ОШИБКА! Пул {self.class_type.__name__} ПУСТ!")
             return None
     
     def release(self, obj):
@@ -76,13 +72,12 @@ class ObjectPool:
             self._active.remove(obj)
             obj.reset()
             self._pool.append(obj)
-            print(f"[Pool] {self.class_type.__name__} #{obj.id} ВОЗВРАЩЁН, в пуле: {len(self._pool)}")
     
     def release_all(self):
         for obj in self._active[:]:
             self.release(obj)
 
-
+#ФАБРИКА ПРЕПЯТСТВИЙ
 class ObstacleFactory:
     
     @staticmethod
@@ -110,7 +105,7 @@ class ObstacleFactory:
             return 'big_cactus'
         return 'small_cactus'
 
-
+#PRD (ПОЧТИ ЧЕСТНЫЙ РАНДОМ)
 class PRD:
 
     def __init__(self,base_chance, name):
