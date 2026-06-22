@@ -1,9 +1,9 @@
 import pygame
 import os
-from config import SCREEN_WIDTH, SCREEN_HEIGHT, GROUND_Y, COLORS, dino_height, dino_width, bird_height, bird_width, big_cactus_height, big_cactus_width, small_cactus_height, small_cactus_width
+from config import *
 from patterns import DinoState
 import random
-
+from models import *
 
 class ResourceManager:
     """Менеджер ресурсов (Singleton) — загружает текстуры один раз"""
@@ -18,9 +18,11 @@ class ResourceManager:
         return cls._instance
     
     def _load_resources(self):
-        """Загрузка всех текстур"""
         assets_dir = "assets"
         
+        self.ground_texture = pygame.image.load(f"{assets_dir}/Ground.png")
+        self.ground_texture = pygame.transform.scale(self.ground_texture, (SCREEN_WIDTH, 14))
+
         # Загружаем кадры анимации
         self.dino_run_frames = []
         self.dino_run_frames.append(pygame.image.load(f"{assets_dir}/dino_run1.png"))
@@ -34,6 +36,10 @@ class ResourceManager:
         self.bird_frames.append(pygame.image.load(f"{assets_dir}/bird_up.png"))
         self.bird_frames.append(pygame.image.load(f"{assets_dir}/bird_down.png"))
 
+        self.flockbird_frames = []
+        self.flockbird_frames.append(pygame.image.load(f"{assets_dir}/flockbird_up.png"))
+        self.flockbird_frames.append(pygame.image.load(f"{assets_dir}/flockbird_down.png"))
+
         # Преобразуем размеры под игру
         for i in range(2):
             self.dino_run_frames[i] = pygame.transform.scale(self.dino_run_frames[i], (dino_width, dino_height))
@@ -44,19 +50,20 @@ class ResourceManager:
         for i in range(2):
             self.bird_frames[i] = pygame.transform.scale(self.bird_frames[i], (bird_width, bird_height))
 
+        for i in range(2):
+            self.flockbird_frames[i] = pygame.transform.scale(self.flockbird_frames[i], (flockbird_width, flockbird_height))
+
         self.cactus = []
         for i in range(1, 5):
             self.cactus.append(pygame.image.load(f"{assets_dir}/Cactus-{i}.png"))
 
     def get_mask(self, surface):
-        """Вернуть маску для поверхности (из кэша или создать новую)"""
         if surface not in self._mask_cache:
             self._mask_cache[surface] = pygame.mask.from_surface(surface)
         return self._mask_cache[surface]
 
 
 class DinoView:
-    """View для динозаврика с анимацией и текстурами"""
     
     def __init__(self):
         self.resources = ResourceManager()
@@ -86,7 +93,6 @@ class DinoView:
 
 
 class ObstacleView:
-    """View для препятствий с текстурами"""
     
     def __init__(self):
         self.resources = ResourceManager()
@@ -98,13 +104,15 @@ class ObstacleView:
             if obstacle.cactus_picture is None:
                 obstacle.cactus_picture = pygame.transform.scale(random.choice(self.resources.cactus), (w, h))
             screen.blit(obstacle.cactus_picture, (x, y))
-        else:
+        elif isinstance(obstacle, Bird):
             texture = self.resources.bird_frames[obstacle.current_frame]
+            screen.blit(texture, (x, y))
+        elif isinstance(obstacle, FlockBird):
+            texture = self.resources.flockbird_frames[obstacle.current_frame]
             screen.blit(texture, (x, y))
 
 
 class GameView:
-    """Главный View — собирает всё вместе"""
     
     def __init__(self, screen):
         self.screen = screen
@@ -112,12 +120,21 @@ class GameView:
         self.small_font = pygame.font.Font(None, 20)
         self.dino_view = DinoView()
         self.obstacle_view = ObstacleView()
+        self.resources = ResourceManager()
     
     def render(self, game_model):
         self.screen.fill(COLORS['WHITE'])
         
-        pygame.draw.line(self.screen, COLORS['BLACK'], 
-                        (0, GROUND_Y), (SCREEN_WIDTH, GROUND_Y), 3)
+        if self.resources.ground_texture:
+            ground_width = self.resources.ground_texture.get_width()
+            
+            offset = int(game_model.ground_offset % ground_width)
+            
+            self.screen.blit(self.resources.ground_texture, (-offset, GROUND_Y-11))
+            self.screen.blit(self.resources.ground_texture, (ground_width - offset, GROUND_Y-11))
+        else:
+            pygame.draw.line(self.screen, COLORS['BLACK'], 
+                            (0, GROUND_Y), (SCREEN_WIDTH, GROUND_Y), 3)
         
         self.dino_view.draw(self.screen, game_model.dino)
         
@@ -142,10 +159,7 @@ class GameView:
 
 
 def mask_collision(sprite1, sprite2, rect1, rect2, resources):
-    """
-    Проверяет пересечение непрозрачных пикселей двух спрайтов через маски.
-    resources – экземпляр ResourceManager (для получения кэшированных масок).
-    """
+    """Проверяет пересечение непрозрачных пикселей двух спрайтов через маски."""
     overlap_rect = rect1.clip(rect2)
     if overlap_rect.width <= 0 or overlap_rect.height <= 0:
         return False
