@@ -65,7 +65,8 @@ class ResourceManager:
 
 class DinoView:
     
-    def __init__(self):
+    def __init__(self,event_bus):
+        self.event_bus = event_bus
         self.resources = ResourceManager()
         self.animation_timer = 0
     
@@ -78,12 +79,16 @@ class DinoView:
         if dino_model.state_machine.state == DinoState.RUNNING:
             self.animation_timer += 1
             frame_index = (self.animation_timer // 10) % 2
+            if self.animation_timer % 10 == 0:
+                self.event_bus.emit(STEP)
             texture = self.resources.dino_run_frames[frame_index]
             screen.blit(texture, (x, y))
         
         elif dino_model.state_machine.state == DinoState.DUCKING:
             self.animation_timer += 1
             frame_index = (self.animation_timer // 10) % 2
+            if self.animation_timer % 10 == 0:
+                self.event_bus.emit(STEP)
             texture = self.resources.dino_duck_frames[frame_index]
             screen.blit(texture, (x, y))
         
@@ -94,13 +99,14 @@ class DinoView:
 
 class ObstacleView:
     
-    def __init__(self):
+    def __init__(self,event_bus):
         self.resources = ResourceManager()
+        self.event_bus = event_bus
     
     def draw(self, screen, obstacle):
         x, y, w, h = obstacle.get_rect()
         
-        if hasattr(obstacle, 'cactus_type'):
+        if isinstance(obstacle, Cactus):
             if obstacle.cactus_picture is None:
                 obstacle.cactus_picture = pygame.transform.scale(random.choice(self.resources.cactus), (w, h))
             screen.blit(obstacle.cactus_picture, (x, y))
@@ -114,12 +120,13 @@ class ObstacleView:
 
 class GameView:
     
-    def __init__(self, screen):
+    def __init__(self, screen,event_bus):
+        self.event_bus = event_bus
         self.screen = screen
         self.font = pygame.font.Font(None, 36)
         self.small_font = pygame.font.Font(None, 20)
-        self.dino_view = DinoView()
-        self.obstacle_view = ObstacleView()
+        self.dino_view = DinoView(self.event_bus)
+        self.obstacle_view = ObstacleView(self.event_bus)
         self.resources = ResourceManager()
     
     def render(self, game_model):

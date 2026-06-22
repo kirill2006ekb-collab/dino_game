@@ -1,6 +1,6 @@
 import pygame
 from events import EventBus
-from config import EVENT_DINO_JUMP, EVENT_DINO_DUCK_START, EVENT_DINO_DUCK_STOP, EVENT_GAME_RESET, EVENT_COLLISION
+from config import *
 from models import Cactus, Bird, FlockBird
 from patterns import DinoState
 from views import ResourceManager, mask_collision
@@ -33,12 +33,13 @@ class InputController:
 
 
 class GameController:
-    def __init__(self, game_model, small_pool, big_pool, bird_pool, flock_bird_pool):
+    def __init__(self, game_model, small_pool, big_pool, bird_pool, flock_bird_pool,sound_manager):
         self.model = game_model
         self.small_pool = small_pool
         self.big_pool = big_pool
         self.bird_pool = bird_pool
         self.flock_bird_pool = flock_bird_pool
+        self.sound_manager = sound_manager
         self.event_bus = EventBus()
         self._setup_event_handlers()
     
@@ -47,20 +48,30 @@ class GameController:
         self.event_bus.subscribe(EVENT_DINO_DUCK_START, self._on_duck_start)
         self.event_bus.subscribe(EVENT_DINO_DUCK_STOP, self._on_duck_stop)
         self.event_bus.subscribe(EVENT_GAME_RESET, self._on_game_reset)
+        self.event_bus.subscribe(DINO_LAND, self._on_dino_landed)
+        self.event_bus.subscribe(STEP, self._step_sound)
+
+    def _on_dino_landed(self,_):
+        self.sound_manager.play('landing')
+
+    def _step_sound(self,_):
+        self.sound_manager.step()
     
-    def _on_dino_jump(self, _):
+    def _on_dino_jump(self,_):
         self.model.dino.jump()
+        self.sound_manager.play('jump')
     
-    def _on_duck_start(self, _):
+    def _on_duck_start(self,_):
         self.model.dino.start_ducking()
     
-    def _on_duck_stop(self, _):
+    def _on_duck_stop(self,_):
         self.model.dino.stop_ducking()
     
-    def _on_game_reset(self, _):
+    def _on_game_reset(self,_):
         for obstacle in self.model.obstacles:
             self._return_to_pool(obstacle)
         self.model.reset()
+        self.sound_manager.play_music()
     
     def _return_to_pool(self, obstacle):
         if isinstance(obstacle, Cactus):
@@ -122,4 +133,6 @@ class GameController:
                     self.event_bus.emit(EVENT_COLLISION)
                     self.model.dino.die()
                     self.model.is_running = False
+                    self.sound_manager.play('lose')
+                    self.sound_manager.stop_music()
                     break
